@@ -2,7 +2,7 @@ name: OpsShield CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, test-*]
   pull_request:
     branches: [main]
 
@@ -23,7 +23,7 @@ jobs:
       - name: Static analysis (Semgrep)
         uses: semgrep/semgrep-action@v1
         with:
-          config: >-
+          config: |
             p/nodejs
             p/owasp-top-ten
             p/jwt
