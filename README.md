@@ -175,4 +175,3 @@ The pipeline uses OIDC — no stored AWS credentials anywhere.
 ---
 
 *OpsShield — Expadox Lab Series A Capstone · Built by the founding engineering team*
-# Temporary commit to register status checks
