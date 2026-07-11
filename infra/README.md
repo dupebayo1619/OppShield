@@ -1,28 +1,20 @@
-# OpsShield Infrastructure
-
-## ECS Task Definition
-
-- **Location:** `infra/ecs/task-definition.json`
-- **Launch Type:** FARGATE
-- **CPU:** 512
-- **Memory:** 1024
-- **Port:** 3000
-
-## Secrets Manager ARNs
+## Secrets Manager ARNs (Dev)
 
 | Secret Name | Environment Variable | Used By |
 |-------------|---------------------|---------|
-| `opsshield/database-url` | `DATABASE_URL` | App |
-| `opsshield/jwt-secret` | `JWT_SECRET` | App |
-| `opsshield/jwt-refresh-secret` | `JWT_REFRESH_SECRET` | App |
-| `opsshield/paystack-secret` | `PAYSTACK_SECRET_KEY` | App |
+| `oppshield/dev/database-url` | `DATABASE_URL` | App |
+| `oppshield/dev/jwt-signing-secret` | `JWT_SECRET` | App |
+| `oppshield/dev/jwt-refresh-secret` | `JWT_REFRESH_SECRET` | App |
+| `oppshield/dev/paystack-secret-key` | `PAYSTACK_SECRET_KEY` | App |
 
-## CloudWatch Logging
+## CloudWatch Logging (Dev)
 
-- **Log Group:** `/ecs/opsshield`
+- **Log Group:** `/ecs/opsshield/dev`
 - **Region:** REGION
 - **Stream Prefix:** `ecs`
 
-## Coordination with Cloud Team
+## Production (Prod)
 
-The Cloud team will provide the actual Secrets Manager ARNs and the ECR repository URL.
+- **Family:** `opsshield/prod`
+- **Log Group:** `/ecs/opsshield/prod`
+- **Secret ARNs:** `oppshield/prod/*`
