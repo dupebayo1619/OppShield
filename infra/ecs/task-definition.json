@@ -1,5 +1,5 @@
 {
-  "family": "opsshield/dev",
+  "family": "oppshield/dev",
   "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskRole",
   "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsExecutionRole",
   "networkMode": "awsvpc",
@@ -8,8 +8,8 @@
   "memory": "1024",
   "containerDefinitions": [
     {
-      "name": "opsshield-app",
-      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/opsshield:latest",
+      "name": "oppshield-app",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/oppshield:latest",
       "portMappings": [
         {
           "containerPort": 3000,
@@ -37,11 +37,11 @@
         },
         {
           "name": "JWT_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:oppshield/dev/jwt-signing-secret"
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:oppshield/dev/jwt-signing-secret-B1KCP8"
         },
         {
           "name": "JWT_REFRESH_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:oppshield/dev/jwt-refresh-secret"
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:oppshield/dev/jwt-refresh-secret-cP9Frm"
         },
         {
           "name": "PAYSTACK_SECRET_KEY",
@@ -51,7 +51,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/opsshield/dev",
+          "awslogs-group": "/ecs/oppshield/dev",
           "awslogs-region": "REGION",
           "awslogs-stream-prefix": "ecs"
         }
