@@ -19,7 +19,7 @@
       "environment": [
         {
           "name": "NODE_ENV",
-          "value": "development"
+          "value": "production"
         },
         {
           "name": "PORT",
@@ -33,19 +33,23 @@
       "secrets": [
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:oppshield/dev/database-url"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:oppshield/dev/database-url-UyZ7RP"
         },
         {
           "name": "JWT_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:oppshield/dev/jwt-signing-secret-B1KCP8"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:oppshield/dev/jwt-signing-secret-B1KCP8"
         },
         {
           "name": "JWT_REFRESH_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:oppshield/dev/jwt-refresh-secret-cP9Frm"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:oppshield/dev/jwt-refresh-secret-cP9Frm"
         },
         {
           "name": "PAYSTACK_SECRET_KEY",
-          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:oppshield/dev/paystack-secret-key"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:oppshield/dev/paystack-secret-key"
+        },
+        {
+          "name": "PAYSTACK_PUBLIC_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:oppshield/dev/paystack-public-key-dBln1B"
         }
       ],
       "logConfiguration": {
