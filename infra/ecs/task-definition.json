@@ -33,23 +33,23 @@
       "secrets": [
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/database-url-UyZ7RP"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/database-url-YaWFD5"
         },
         {
           "name": "JWT_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/jwt-signing-secret-B1KCP8"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/jwt-signing-secret-cU33bK"
         },
         {
           "name": "JWT_REFRESH_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/jwt-refresh-secret-cP9Frm"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/jwt-refresh-secret-YaWFD5"
         },
         {
           "name": "PAYSTACK_SECRET_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/paystack-secret-key"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/paystack-secret-key-U7rNAP"
         },
         {
           "name": "PAYSTACK_PUBLIC_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/paystack-public-key-dBln1B"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/paystack-public-key-OzVejJ"
         }
       ],
       "logConfiguration": {
