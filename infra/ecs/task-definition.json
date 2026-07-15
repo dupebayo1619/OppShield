@@ -1,5 +1,5 @@
 {
-  "family": "opsshield/dev",
+  "family": "opsshield-dev",
   "taskRoleArn": "arn:aws:iam::541592468666:role/opsshield-dev-ecs-task-role",
   "executionRoleArn": "arn:aws:iam::541592468666:role/opsshield-dev-ecs-execution-role",
   "networkMode": "awsvpc",
@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "opsshield-app",
-      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/opsshield:latest",
+      "image": "541592468666.dkr.ecr.us-east-1.amazonaws.com/opsshield-dev:latest",
       "portMappings": [
         {
           "containerPort": 3000,
@@ -56,7 +56,7 @@
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/opsshield-dev",
-          "awslogs-region": "REGION",
+          "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }
       }
