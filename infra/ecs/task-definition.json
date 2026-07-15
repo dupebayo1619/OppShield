@@ -1,7 +1,7 @@
 {
   "family": "opsshield/dev",
-  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskRole",
-  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsExecutionRole",
+  "taskRoleArn": "arn:aws:iam::541592468666:role/opsshield-dev-ecs-task-role",
+  "executionRoleArn": "arn:aws:iam::541592468666:role/opsshield-dev-ecs-execution-role",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
@@ -55,7 +55,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/opsshield/dev",
+          "awslogs-group": "/ecs/opsshield-dev",
           "awslogs-region": "REGION",
           "awslogs-stream-prefix": "ecs"
         }
