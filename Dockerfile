@@ -16,12 +16,8 @@ RUN npm ci
 COPY . .
 RUN npx prisma generate
 
-FROM node:20-slim AS production
-
-# Install OpenSSL and create symlinks (again!)
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/* \
-    && ln -s /usr/lib/x86_64-linux-gnu/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so.1.1 \
-    && ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+FROM base AS production
+# Now inherits FROM base, so OpenSSL is already installed!
 
 WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 opsshield
@@ -33,6 +29,9 @@ COPY --from=build /app/package.json ./
 
 # Fix permissions for Prisma
 RUN chown -R opsshield:nodejs /app/node_modules/@prisma
+
+# Set Prisma engine path
+ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node
 
 USER opsshield
 
