@@ -1,69 +1,79 @@
-const { verifyAccess } = require('../lib/jwt');
+// src/middleware/auth.js
+const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
 
-/**
- * Attach authenticated user to req.user
- */
-async function authenticate(req, res, next) {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
+const authenticate = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    req.user = {
+      id: decoded.userId || decoded.id || decoded.sub,
+      email: decoded.email,
+      role: decoded.role || 'member',
+      ...decoded
+    };
+
+    console.log('🔐 User authenticated:', req.user.id, 'Role:', req.user.role);
+    next();
+  } catch (error) {
+    console.error('Auth error:', error.message);
+
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    return res.status(401).json({ error: 'Authentication failed' });
+  }
+};
+
+const requireAdmin = (req, res, next) => {
+  if (!req.user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  const token = header.slice(7);
-  try {
-    const payload = verifyAccess(token);
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: { id: true, email: true, firstName: true, lastName: true },
-    });
-    if (!user) return res.status(401).json({ error: 'User not found' });
-    req.user = user;
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-}
-
-/**
- * Verify the user is a member of the org in the URL.
- * Attaches req.member with the role.
- * CRITICAL: This is the primary defence against IDOR — every org-scoped
- * route must use this middleware. Without it, any authenticated user
- * can access any org's data by changing the URL parameter.
- */
-async function requireOrgMember(req, res, next) {
-  const orgId = req.params.orgId || req.body.organisationId;
-  if (!orgId) return res.status(400).json({ error: 'Organisation ID required' });
-
-  const member = await prisma.member.findUnique({
-    where: {
-      userId_organisationId: {
-        userId:         req.user.id,
-        organisationId: orgId,
-      }
-    },
-    include: { organisation: true },
-  });
-
-  if (!member) {
-    return res.status(403).json({ error: 'You are not a member of this organisation' });
-  }
-
-  req.member = member;
-  req.organisation = member.organisation;
-  next();
-}
-
-/**
- * Require admin role within the org.
- * Must be called after requireOrgMember.
- */
-function requireAdmin(req, res, next) {
-  if (req.member?.role !== 'ADMIN') {
+  if (req.user.role !== 'admin') {
+    console.warn('🔒 Admin access denied for user:', req.user.id, 'Role:', req.user.role);
     return res.status(403).json({ error: 'Admin access required' });
   }
-  next();
-}
 
-module.exports = { authenticate, requireOrgMember, requireAdmin };
+  console.log('🔑 Admin access granted for user:', req.user.id);
+  next();
+};
+
+const requireOrgMember = async (req, res, next) => {
+  try {
+    const { orgId } = req.params;
+    
+    // Check if user is a member of the organisation
+    const member = await prisma.member.findFirst({
+      where: {
+        userId: req.user.id,
+        organisationId: orgId,
+      }
+    });
+
+    if (!member) {
+      return res.status(403).json({ error: 'You are not a member of this organisation' });
+    }
+
+    // Attach organisation to request for downstream use
+    req.organisation = { id: orgId };
+    req.member = member;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { authenticate, requireAdmin, requireOrgMember };

@@ -15,6 +15,8 @@ const taskRoutes      = require('./routes/tasks');
 const billingRoutes   = require('./routes/billing');
 const webhookRoutes   = require('./routes/webhooks');
 const memberRoutes    = require('./routes/members');
+const featureFlagRoutes = require('./routes/featureFlags');
+const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
 
@@ -32,14 +34,11 @@ app.use(helmet({
 }));
 
 // ── CORS ─────────────────────────────────────────────────────────
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
 app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: origin ${origin} not allowed`));
-  },
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // ── Body parsing ──────────────────────────────────────────────────
@@ -56,7 +55,7 @@ app.use(morgan('combined', {
 
 // ── Global rate limits ────────────────────────────────────────────
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
@@ -88,6 +87,8 @@ app.use('/api/tasks',          taskRoutes);
 app.use('/api/billing',        billingRoutes);
 app.use('/api/webhooks',       webhookRoutes);
 app.use('/api/members',        memberRoutes);
+app.use('/api/feature-flags',  featureFlagRoutes);
+app.use('/api/dashboard',      dashboardRoutes);
 
 // ── Error handling ────────────────────────────────────────────────
 app.use(notFound);

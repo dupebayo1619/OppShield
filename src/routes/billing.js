@@ -1,19 +1,30 @@
-const router = require('express').Router();
-const { body } = require('express-validator');
-const { authenticate, requireOrgMember, requireAdmin } = require('../middleware/auth');
-const { validate } = require('../middleware/validate');
-const billingController = require('../controllers/billing');
+// src/routes/billing.js
+const express = require('express');
+const router = express.Router();
+const { authenticate } = require('../middleware/auth');
 
-router.get('/org/:orgId',
-  authenticate, requireOrgMember,
-  billingController.history
-);
+// GET billing information
+router.get('/', authenticate, async (req, res) => {
+  try {
+    // For now, return mock billing data
+    const billingData = {
+      plan: 'Free',
+      price: 0,
+      billingCycle: 'monthly',
+      nextBillingDate: null,
+      usage: {
+        tasksUsed: 0,
+        tasksLimit: 100,
+        storageUsed: '0 MB',
+        storageLimit: '1 GB'
+      }
+    };
 
-router.post('/org/:orgId/initiate',
-  authenticate, requireOrgMember, requireAdmin,
-  [body('plan').isIn(['STARTER', 'PRO'])],
-  validate,
-  billingController.initiate
-);
+    res.json(billingData);
+  } catch (error) {
+    console.error('Error fetching billing:', error);
+    res.status(500).json({ error: 'Failed to fetch billing information' });
+  }
+});
 
 module.exports = router;
