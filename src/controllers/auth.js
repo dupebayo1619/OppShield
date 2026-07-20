@@ -1,6 +1,7 @@
 // src/controllers/auth.js
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const logger = require('../lib/logger');
 const audit = require('../lib/audit');
@@ -10,18 +11,14 @@ async function register(req, res, next) {
   try {
     const { email, password, firstName, lastName, orgName } = req.body;
 
-    // Check if user exists
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
-    // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user and organisation in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create organisation
       const organisation = await tx.organisation.create({
         data: {
           name: orgName,
@@ -29,18 +26,16 @@ async function register(req, res, next) {
         }
       });
 
-      // Create user
       const user = await tx.user.create({
         data: {
           email,
           passwordHash,
           firstName,
           lastName,
-          role: 'admin', // First user in org becomes admin
+          role: 'admin',
         }
       });
 
-      // Create member record
       await tx.member.create({
         data: {
           userId: user.id,
@@ -52,12 +47,11 @@ async function register(req, res, next) {
       return { user, organisation };
     });
 
-    // Generate tokens
     const token = jwt.sign(
-      { 
-        userId: result.user.id, 
-        email: result.user.email, 
-        role: result.user.role || 'member' 
+      {
+        userId: result.user.id,
+        email: result.user.email,
+        role: result.user.role || 'member'
       },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
@@ -94,6 +88,7 @@ async function register(req, res, next) {
       }
     });
   } catch (err) {
+    console.error('❌ Register error:', err);
     next(err);
   }
 }
@@ -101,29 +96,31 @@ async function register(req, res, next) {
 // ─── Login ─────────────────────────────────────────────────────────
 async function login(req, res, next) {
   try {
+    console.log('📥 Login request body:', req.body);
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
 
     const user = await prisma.user.findUnique({
       where: { email }
     });
 
     if (!user) {
-      logger.warn('Login attempt with non-existent email', { email });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      logger.warn('Login attempt with invalid password', { email });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Include role in the JWT
     const token = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email, 
-        role: user.role || 'member' 
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role || 'member'
       },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
@@ -134,8 +131,6 @@ async function login(req, res, next) {
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: '7d' }
     );
-
-    logger.info('User logged in', { userId: user.id, email: user.email });
 
     res.json({
       accessToken: token,
@@ -149,7 +144,8 @@ async function login(req, res, next) {
       }
     });
   } catch (err) {
-    next(err);
+    console.error('❌ Login error:', err);
+    res.status(500).json({ error: 'An unexpected error occurred' });
   }
 }
 
@@ -173,10 +169,10 @@ async function refresh(req, res, next) {
     }
 
     const token = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email, 
-        role: user.role || 'member' 
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role || 'member'
       },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
@@ -187,17 +183,17 @@ async function refresh(req, res, next) {
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Refresh token expired' });
     }
-    next(err);
+    console.error('❌ Refresh error:', err);
+    res.status(500).json({ error: 'An unexpected error occurred' });
   }
 }
 
 // ─── Logout ───────────────────────────────────────────────────────
 async function logout(req, res, next) {
   try {
-    // In a real implementation, you'd blacklist the token
-    // For now, just return success
     res.json({ message: 'Logged out successfully' });
   } catch (err) {
+    console.error('❌ Logout error:', err);
     next(err);
   }
 }
@@ -209,11 +205,9 @@ async function forgotPassword(req, res, next) {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      // Don't reveal if user exists or not for security
       return res.json({ message: 'If an account exists, a reset link has been sent' });
     }
 
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto
       .createHash('sha256')
@@ -224,16 +218,14 @@ async function forgotPassword(req, res, next) {
       where: { id: user.id },
       data: {
         resetToken: hashedToken,
-        resetTokenExpiry: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+        resetTokenExpiry: new Date(Date.now() + 15 * 60 * 1000),
       }
     });
 
-    // In a real app, send email with reset link
-    // For now, just log it
     logger.info('Password reset requested', { email, token: resetToken });
-
     res.json({ message: 'If an account exists, a reset link has been sent' });
   } catch (err) {
+    console.error('❌ Forgot password error:', err);
     next(err);
   }
 }
@@ -270,9 +262,9 @@ async function resetPassword(req, res, next) {
       }
     });
 
-    logger.info('Password reset successfully', { userId: user.id });
     res.json({ message: 'Password reset successfully' });
   } catch (err) {
+    console.error('❌ Reset password error:', err);
     next(err);
   }
 }
@@ -298,10 +290,12 @@ async function me(req, res, next) {
 
     res.json({ user });
   } catch (err) {
+    console.error('❌ Me error:', err);
     next(err);
   }
 }
 
+// ─── Exports ──────────────────────────────────────────────────────
 module.exports = {
   register,
   login,

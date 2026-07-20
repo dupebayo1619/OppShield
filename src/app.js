@@ -42,8 +42,7 @@ app.use(cors({
 }));
 
 // ── Body parsing ──────────────────────────────────────────────────
-// Webhook route needs raw body for Paystack signature verification
-app.use('/api/webhooks', express.raw({ type: 'application/json' }));
+// IMPORTANT: express.json() MUST be before routes
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -85,10 +84,14 @@ app.use('/api/auth',           authRoutes);
 app.use('/api/organisations',  orgRoutes);
 app.use('/api/tasks',          taskRoutes);
 app.use('/api/billing',        billingRoutes);
-app.use('/api/webhooks',       webhookRoutes);
 app.use('/api/members',        memberRoutes);
 app.use('/api/feature-flags',  featureFlagRoutes);
 app.use('/api/dashboard',      dashboardRoutes);
+
+// ─── WEBHOOK (MUST COME AFTER ALL REGULAR ROUTES) ───
+// Webhook route needs raw body for Paystack signature verification
+app.use('/api/webhooks', express.raw({ type: 'application/json' }));
+app.use('/api/webhooks',       webhookRoutes);
 
 // ── Error handling ────────────────────────────────────────────────
 app.use(notFound);
