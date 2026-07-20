@@ -79,6 +79,7 @@ class FeatureFlagService {
 
   private loadDefaultFlags(): void {
     const defaultFlags: FeatureFlag[] = [
+  { name: "new-registration-flow", enabled: false, percentage: 0, description: "New registration flow" },
       { name: 'new-billing-ui', enabled: false, percentage: 0, description: 'New billing interface' },
       { name: 'analytics-widget', enabled: false, percentage: 0, description: 'Dashboard analytics widget' },
       { name: 'task-automation', enabled: true, percentage: 100, description: 'Task automation features' },
