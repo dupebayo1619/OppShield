@@ -3,24 +3,16 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { authenticate } = require('../middleware/auth');
 
-// GET dashboard data
-router.get('/', authenticate, async (req, res) => {
+// GET dashboard data (Public - No Authentication Required)
+router.get('/', async (req, res) => {
   try {
-    const userId = req.user.id;
-    
-    // Get user's organization through Member table
-    const member = await prisma.member.findFirst({
-      where: { userId: userId },
-      include: { organisation: true }
-    });
-
-    if (!member || !member.organisation) {
-      return res.status(404).json({ error: 'Organization not found' });
+    // Get the first organization (for public view)
+    const org = await prisma.organisation.findFirst();
+    if (!org) {
+      return res.status(404).json({ error: 'No organization found' });
     }
-
-    const orgId = member.organisation.id;
+    const orgId = org.id;
 
     // Get tasks for the organization
     const tasks = await prisma.task.findMany({
@@ -62,7 +54,7 @@ router.get('/', authenticate, async (req, res) => {
         completedTasks,
         pendingTasks,
         inProgressTasks,
-        totalOrgs: 1 // Since we're only showing one org
+        totalOrgs: 1
       },
       recentActivity: formattedActivity
     });

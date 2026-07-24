@@ -9,13 +9,13 @@ router.post('/register', async (req, res, next) => {
   // Check if registration is enabled via feature flag
   try {
     const isRegistrationEnabled = featureFlags.isEnabled('new-registration-flow');
-    
+
     if (!isRegistrationEnabled) {
-      return res.status(403).json({ 
-        error: 'Registration is temporarily disabled. Please try again later.' 
+      return res.status(403).json({
+        error: 'Registration is temporarily disabled. Please try again later.'
       });
     }
-    
+
     // Pass to the register controller
     register(req, res, next);
   } catch (error) {
@@ -27,5 +27,10 @@ router.post('/register', async (req, res, next) => {
 
 // Login a user (no feature flag needed)
 router.post('/login', login);
+
+// Test endpoint to check routing
+router.get('/test', (req, res) => {
+  res.json({ message: 'Auth route is working!' });
+});
 
 module.exports = router;

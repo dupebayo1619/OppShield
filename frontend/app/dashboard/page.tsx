@@ -33,7 +33,6 @@ export default function DashboardPage() {
       return;
     }
 
-    // Load feature flags
     const loadFlags = async () => {
       await featureFlags.loadFlags();
       setShowAnalytics(featureFlags.isEnabled('analytics-widget'));
@@ -44,6 +43,7 @@ export default function DashboardPage() {
     const fetchDashboard = async () => {
       try {
         const token = localStorage.getItem('accessToken');
+        // ✅ HTTPS fix
         const response = await fetch('https://staging.srzoh.com.ng/api/dashboard', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -106,7 +106,7 @@ export default function DashboardPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-sm text-gray-500">Total Tasks</h3>
@@ -142,7 +142,6 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Feature Flag: Analytics Widget */}
         {showAnalytics && (
           <div className="bg-white p-6 rounded-lg shadow mt-6">
             <h2 className="text-lg font-semibold mb-4">📊 Analytics</h2>
@@ -163,7 +162,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Feature Flag: Bulk Actions */}
         {showBulkActions && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
             <h3 className="text-sm font-medium text-yellow-800">⚡ Bulk Actions (Beta)</h3>

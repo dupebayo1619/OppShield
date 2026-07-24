@@ -1,0 +1,13 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/feature-flags/page": "app/admin/feature-flags/page.js",
+  "/api/health/route": "app/api/health/route.js",
+  "/billing/page": "app/billing/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/public/page": "app/dashboard/public/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/tasks/page": "app/tasks/page.js"
+}

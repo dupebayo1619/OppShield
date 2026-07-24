@@ -1,56 +1,33 @@
 // src/routes/tasks.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { authenticate } = require('../middleware/auth'); // Correct import
+const { authenticate } = require("../middleware/auth");
+const { getOrganisation } = require("../middleware/organisation");
+const taskController = require("../controllers/tasks");
+
+// All task routes need authentication and organisation
+router.use(authenticate);
+router.use(getOrganisation);
 
 // Get all tasks
-router.get('/', authenticate, async (req, res) => {
-  try {
-    // TODO: Implement get tasks
-    res.json({ message: 'Get tasks endpoint' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.get("/", taskController.list);
 
 // Get task by ID
-router.get('/:id', authenticate, async (req, res) => {
-  try {
-    // TODO: Implement get task by id
-    res.json({ message: 'Get task by id endpoint' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.get("/:taskId", taskController.get);
 
 // Create task
-router.post('/', authenticate, async (req, res) => {
-  try {
-    // TODO: Implement create task
-    res.json({ message: 'Create task endpoint' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.post("/", taskController.create);
 
 // Update task
-router.put('/:id', authenticate, async (req, res) => {
-  try {
-    // TODO: Implement update task
-    res.json({ message: 'Update task endpoint' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.put("/:taskId", taskController.update);
 
 // Delete task
-router.delete('/:id', authenticate, async (req, res) => {
-  try {
-    // TODO: Implement delete task
-    res.json({ message: 'Delete task endpoint' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.delete("/:taskId", taskController.remove);
+
+// Approve task
+router.post("/:taskId/approve", taskController.approve);
+
+// Reject task
+router.post("/:taskId/reject", taskController.reject);
 
 module.exports = router;
