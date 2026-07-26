@@ -16,6 +16,10 @@ const taskRoutes = require('./routes/tasks');
 const organisationRoutes = require('./routes/organisations');
 const featureFlagRoutes = require('./routes/featureFlags');
 const dashboardRoutes = require('./routes/dashboard');
+const memberRoutes = require('./routes/members');
+const billingRoutes = require('./routes/billing');
+const webhookRoutes = require('./routes/webhooks');
+const dashboardPublicRoutes = require('./routes/dashboard-public');
 
 const app = express();
 app.set("trust proxy", true);
@@ -109,6 +113,11 @@ app.options('*', cors(corsOptions));
 // ─── Cookie Parser (needed to read httpOnly auth cookies) ───────
 app.use(cookieParser());
 
+// ─── Webhook Route (MUST BE BEFORE express.json()) ──────────────
+// Paystack signature verification needs the exact raw bytes,
+// not a parsed/re-serialized body.
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+
 // ─── Rate Limiting Middleware ──────────────────────────────────
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -163,6 +172,9 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/organisations', organisationRoutes);
 app.use('/api/feature-flags', featureFlagRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/members', memberRoutes);
+app.use('/api/billing', billingRoutes);
+app.use('/api/dashboard/public', dashboardPublicRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────
 app.use((req, res) => {

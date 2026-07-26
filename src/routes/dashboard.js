@@ -3,45 +3,36 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { authenticate } = require('../middleware/auth');
+const { getOrganisation } = require('../middleware/organisation');
 
-// GET dashboard data (Public - No Authentication Required)
+router.use(authenticate);
+router.use(getOrganisation);
+
 router.get('/', async (req, res) => {
   try {
-    // Get the first organization (for public view)
-    const org = await prisma.organisation.findFirst();
-    if (!org) {
-      return res.status(404).json({ error: 'No organization found' });
-    }
-    const orgId = org.id;
+    const orgId = req.organisation.id;
 
-    // Get tasks for the organization
     const tasks = await prisma.task.findMany({
       where: { organisationId: orgId }
     });
 
-    // Calculate stats
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(t => t.status === 'APPROVED' || t.status === 'COMPLETED').length;
     const pendingTasks = tasks.filter(t => t.status === 'PENDING').length;
     const inProgressTasks = tasks.filter(t => t.status === 'IN_PROGRESS').length;
 
-    // Get recent activity (last 5 tasks)
     const recentActivity = await prisma.task.findMany({
       where: { organisationId: orgId },
       orderBy: { updatedAt: 'desc' },
       take: 5,
       include: {
         createdBy: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true
-          }
+          select: { firstName: true, lastName: true }
         }
       }
     });
 
-    // Format recent activity
     const formattedActivity = recentActivity.map(task => ({
       id: task.id,
       action: `${task.createdBy?.firstName || 'User'} ${task.status === 'PENDING' ? 'created' : 'updated'} task: ${task.title}`,
@@ -49,13 +40,7 @@ router.get('/', async (req, res) => {
     }));
 
     res.json({
-      stats: {
-        totalTasks,
-        completedTasks,
-        pendingTasks,
-        inProgressTasks,
-        totalOrgs: 1
-      },
+      stats: { totalTasks, completedTasks, pendingTasks, inProgressTasks },
       recentActivity: formattedActivity
     });
   } catch (error) {
