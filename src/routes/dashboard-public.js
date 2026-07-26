@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
       totalOrgs
     ] = await Promise.all([
       prisma.task.count(),
-      prisma.task.count({ where: { status: 'COMPLETED' } }),
+      prisma.task.count({ where: { status: { in: ['APPROVED', 'DONE'] } } }),
       prisma.task.count({ where: { status: 'PENDING' } }),
       prisma.task.count({ where: { status: 'IN_PROGRESS' } }),
       prisma.organisation.count()
