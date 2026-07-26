@@ -103,6 +103,10 @@ async function register(req, res, next) {
     setAuthCookies(res, token, refreshToken);
 
     res.status(201).json({
+      // TODO: remove accessToken/refreshToken from body once Stage 7 pentest
+      // is complete — cookies alone should be the sole auth mechanism.
+      accessToken: token,
+      refreshToken: refreshToken,
       user: {
         id: result.user.id,
         email: result.user.email,
@@ -162,6 +166,10 @@ async function login(req, res, next) {
     setAuthCookies(res, token, refreshToken);
 
     res.json({
+      // TODO: remove accessToken/refreshToken from body once Stage 7 pentest
+      // is complete — cookies alone should be the sole auth mechanism.
+      accessToken: token,
+      refreshToken: refreshToken,
       user: {
         id: user.id,
         email: user.email,
