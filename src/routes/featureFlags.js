@@ -1,6 +1,7 @@
 // src/routes/featureFlags.js
 const express = require('express');
 const router = express.Router();
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
 // Feature flags configuration
 const featureFlags = {
@@ -41,18 +42,19 @@ const featureFlags = {
   },
 };
 
-// GET all feature flags
-router.get('/', (req, res) => {
-  const userId = req.query.userId || 'test-user';
+// ─── AUTHENTICATION ──────────────────────────────────────────────────
+// All routes require authentication
+router.use(authenticate);
 
+// ─── GET all feature flags ─────────────────────────────────────────
+router.get('/', (req, res) => {
+  const userId = req.user?.id || 'test-user';
   const flags = Object.entries(featureFlags).map(([name, config]) => {
     let isEnabled = config.enabled;
-
     if (config.percentage !== undefined) {
       const hash = hashString(userId + name);
       isEnabled = isEnabled && hash <= config.percentage;
     }
-
     return {
       name,
       enabled: isEnabled,
@@ -60,27 +62,22 @@ router.get('/', (req, res) => {
       description: config.description,
     };
   });
-
   res.status(200).json(flags);
 });
 
-// GET single feature flag
+// ─── GET single feature flag ──────────────────────────────────────
 router.get('/:flagName', (req, res) => {
   const { flagName } = req.params;
-  const userId = req.query.userId || 'test-user';
+  const userId = req.user?.id || 'test-user';
   const config = featureFlags[flagName];
-
   if (!config) {
     return res.status(404).json({ error: 'Feature flag not found' });
   }
-
   let isEnabled = config.enabled;
-
   if (config.percentage !== undefined) {
     const hash = hashString(userId + flagName);
     isEnabled = isEnabled && hash <= config.percentage;
   }
-
   res.status(200).json({
     name: flagName,
     enabled: isEnabled,
@@ -89,20 +86,17 @@ router.get('/:flagName', (req, res) => {
   });
 });
 
-// Admin: Update feature flag
-router.put('/:flagName', (req, res) => {
+// ─── UPDATE feature flag (Admin only) ─────────────────────────────
+router.put('/:flagName', requireAdmin, (req, res) => {
   const { flagName } = req.params;
   const { enabled, percentage, description } = req.body;
-
   console.log('📥 Updating flag:', flagName, { enabled, percentage, description });
 
-  // Check if flag exists
   if (!featureFlags[flagName]) {
     console.log('❌ Flag not found:', flagName);
     return res.status(404).json({ error: 'Feature flag not found' });
   }
 
-  // Update the flag
   if (enabled !== undefined) {
     featureFlags[flagName].enabled = enabled;
     console.log(`✅ ${flagName} enabled: ${enabled}`);
@@ -114,7 +108,6 @@ router.put('/:flagName', (req, res) => {
     featureFlags[flagName].description = description;
   }
 
-  // Return the updated flag
   res.status(200).json({
     name: flagName,
     enabled: featureFlags[flagName].enabled,
@@ -123,7 +116,7 @@ router.put('/:flagName', (req, res) => {
   });
 });
 
-// Helper: Hash string for percentage rollout
+// ─── HELPER ─────────────────────────────────────────────────────────
 function hashString(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -135,3 +128,4 @@ function hashString(str) {
 }
 
 module.exports = router;
+

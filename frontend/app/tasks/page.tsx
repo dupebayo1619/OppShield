@@ -18,7 +18,50 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const router = useRouter();
+
+  const fetchTasks = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('https://staging.srzoh.com.ng/api/tasks', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('accessToken');
+        router.push('/login');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
+      }
+
+      const data = await response.json();
+
+      // Handle both response shapes: { tasks: [...] } or raw array
+      if (Array.isArray(data)) {
+        setTasks(data);
+      } else if (data && Array.isArray(data.tasks)) {
+        setTasks(data.tasks);
+      } else {
+        console.warn('Tasks API returned unexpected shape:', data);
+        setTasks([]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error fetching tasks:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -27,42 +70,8 @@ export default function TasksPage() {
       return;
     }
 
-    const fetchTasks = async () => {
-      try {
-        const token = localStorage.getItem('accessToken');
-        const response = await fetch('https://staging.srzoh.com.ng/api/tasks', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.status === 401) {
-          localStorage.removeItem('accessToken');
-          router.push('/login');
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch tasks');
-        }
-
-        const data = await response.json();
-
-        if (Array.isArray(data)) {
-          setTasks(data);
-        } else {
-          console.warn('Tasks API returned non-array:', data);
-          setTasks([]);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-        console.error('Error fetching tasks:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const handleLogout = () => {
@@ -70,6 +79,45 @@ export default function TasksPage() {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     router.push('/login');
+  };
+
+  const handleCreateTask = async () => {
+    if (!newTitle.trim()) {
+      setCreateError('Title is required');
+      return;
+    }
+
+    setCreating(true);
+    setCreateError(null);
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('https://staging.srzoh.com.ng/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: newTitle,
+          description: newDescription || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody.error || 'Failed to create task');
+      }
+
+      setShowCreateModal(false);
+      setNewTitle('');
+      setNewDescription('');
+      await fetchTasks(); // refetch so the list reflects server truth
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -125,7 +173,10 @@ export default function TasksPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Tasks</h1>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
             Create Task
           </button>
         </div>
@@ -192,6 +243,58 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-lg font-bold mb-4">New Task</h2>
+
+            {createError && (
+              <div className="mb-3 text-sm text-red-600">{createError}</div>
+            )}
+
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input
+              className="w-full border p-2 mb-3 rounded"
+              placeholder="Task title"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              disabled={creating}
+            />
+
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              className="w-full border p-2 mb-4 rounded"
+              placeholder="Optional description"
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              disabled={creating}
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateError(null);
+                  setNewTitle('');
+                  setNewDescription('');
+                }}
+                disabled={creating}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateTask}
+                disabled={creating || !newTitle.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {creating ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
