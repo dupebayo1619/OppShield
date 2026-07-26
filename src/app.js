@@ -19,7 +19,6 @@ const dashboardRoutes = require('./routes/dashboard');
 const memberRoutes = require('./routes/members');
 const billingRoutes = require('./routes/billing');
 const webhookRoutes = require('./routes/webhooks');
-const dashboardPublicRoutes = require('./routes/dashboard-public');
 
 const app = express();
 app.set("trust proxy", true);
@@ -174,7 +173,6 @@ app.use('/api/feature-flags', featureFlagRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/billing', billingRoutes);
-app.use('/api/dashboard/public', dashboardPublicRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────
 app.use((req, res) => {
