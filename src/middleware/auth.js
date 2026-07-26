@@ -1,16 +1,23 @@
-// src/middleware/auth.js
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
 
 const authenticate = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    // Prefer the httpOnly cookie set by login/refresh
+    let token = req.cookies?.accessToken;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Fallback: allow Authorization header too (useful for non-browser clients/testing)
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
+
+    if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = {
@@ -54,8 +61,7 @@ const requireAdmin = (req, res, next) => {
 const requireOrgMember = async (req, res, next) => {
   try {
     const { orgId } = req.params;
-    
-    // Check if user is a member of the organisation
+
     const member = await prisma.member.findFirst({
       where: {
         userId: req.user.id,
@@ -67,7 +73,6 @@ const requireOrgMember = async (req, res, next) => {
       return res.status(403).json({ error: 'You are not a member of this organisation' });
     }
 
-    // Attach organisation to request for downstream use
     req.organisation = { id: orgId };
     req.member = member;
     next();
