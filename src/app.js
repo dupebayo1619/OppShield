@@ -5,7 +5,6 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
-const cookieParser = require('cookie-parser');
 
 // Load environment variables
 dotenv.config();
@@ -16,9 +15,7 @@ const taskRoutes = require('./routes/tasks');
 const organisationRoutes = require('./routes/organisations');
 const featureFlagRoutes = require('./routes/featureFlags');
 const dashboardRoutes = require('./routes/dashboard');
-const memberRoutes = require('./routes/members');
-const billingRoutes = require('./routes/billing');
-const webhookRoutes = require('./routes/webhooks');
+const dashboardPublicRoutes = require('./routes/dashboard-public');
 
 const app = express();
 app.set("trust proxy", true);
@@ -28,19 +25,38 @@ const PORT = process.env.PORT || 3000;
 app.use((req, res, next) => {
   console.log('🔒 Security middleware running for:', req.url);
 
+  // Prevent clickjacking
   res.setHeader('X-Frame-Options', 'DENY');
+
+  // Prevent MIME type sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  // Enable XSS protection
   res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // Force HTTPS (Strict Transport Security)
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+
+  // Disable caching for all API responses
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
+
+  // Control referrer information
   res.setHeader('Referrer-Policy', 'no-referrer');
+
+  // Prevent DNS prefetching
   res.setHeader('X-DNS-Prefetch-Control', 'off');
+
+  // Prevent downloading of content
   res.setHeader('X-Download-Options', 'noopen');
+
+  // Cross-Origin policies
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+
+  // Permissions Policy
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=()');
 
   next();
@@ -67,6 +83,7 @@ app.use(helmet({
 }));
 
 // ─── CORS Configuration ─────────────────────────────────────────
+// Define allowed origins - COMPLETE LIST WITH ALL DOMAINS
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
@@ -77,6 +94,7 @@ const allowedOrigins = [
   'https://opsshield-sentinels.expadox.com'
 ];
 
+// Also allow origins from environment variable
 if (process.env.FRONTEND_URL) {
   const envOrigins = process.env.FRONTEND_URL.split(',').map(url => url.trim());
   envOrigins.forEach(url => {
@@ -88,9 +106,12 @@ if (process.env.FRONTEND_URL) {
 
 const corsOptions = {
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) {
       return callback(null, true);
     }
+
+    // Check if the origin is allowed
     if (allowedOrigins.indexOf(origin) !== -1) {
       console.log('✅ CORS allowed origin:', origin);
       callback(null, true);
@@ -106,21 +127,16 @@ const corsOptions = {
   exposedHeaders: ['Content-Length', 'X-Request-Id'],
 };
 
+// Apply CORS middleware
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
 app.options('*', cors(corsOptions));
-
-// ─── Cookie Parser (needed to read httpOnly auth cookies) ───────
-app.use(cookieParser());
-
-// ─── Webhook Route (MUST BE BEFORE express.json()) ──────────────
-// Paystack signature verification needs the exact raw bytes,
-// not a parsed/re-serialized body.
-app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
 
 // ─── Rate Limiting Middleware ──────────────────────────────────
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
   message: {
     error: 'Too many requests from this IP, please try again later.'
   },
@@ -128,18 +144,8 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: {
-    error: 'Too many authentication attempts from this IP, please try again later.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-app.use('/api', limiter);
-app.use('/api/auth', authLimiter);
+// Apply rate limiting to all API routes
+// app.use('/api', limiter);
 
 // ─── Request Logging ────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
@@ -152,6 +158,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ─── Health Check Endpoint ─────────────────────────────────────
 app.get('/health', (req, res) => {
+  // Add headers directly here (bypass middleware)
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -170,9 +177,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/organisations', organisationRoutes);
 app.use('/api/feature-flags', featureFlagRoutes);
+app.use('/api/dashboard/public', dashboardPublicRoutes);  // ✅ PUBLIC ROUTE - MOUNTED FIRST
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/members', memberRoutes);
-app.use('/api/billing', billingRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────
 app.use((req, res) => {
