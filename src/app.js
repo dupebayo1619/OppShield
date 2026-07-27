@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 
 // Load environment variables
@@ -155,6 +156,7 @@ if (process.env.NODE_ENV !== 'test') {
 // ─── Body Parsers ──────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 
 // ─── Health Check Endpoint ─────────────────────────────────────
 app.get('/health', (req, res) => {

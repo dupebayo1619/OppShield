@@ -1,7 +1,19 @@
 // src/routes/auth.js
 const express = require('express');
 const router = express.Router();
-const { register, login, refresh, logout, forgotPassword, resetPassword, me } = require('../controllers/auth');
+const {
+  register,
+  login,
+  refresh,
+  logout,
+  forgotPassword,
+  resetPassword,
+  me,
+  setupMfa,
+  verifyMfaSetup,
+  verifyMfaLogin,
+  disableMfa
+} = require('../controllers/auth');
 const { authenticate } = require('../middleware/auth');
 const { featureFlags } = require('../services/featureFlags');
 
@@ -9,13 +21,11 @@ const { featureFlags } = require('../services/featureFlags');
 router.post('/register', async (req, res, next) => {
   try {
     const isRegistrationEnabled = featureFlags.isEnabled('new-registration-flow');
-
     if (!isRegistrationEnabled) {
       return res.status(403).json({
         error: 'Registration is temporarily disabled. Please try again later.'
       });
     }
-
     register(req, res, next);
   } catch (error) {
     console.error('Feature flag check failed:', error);
@@ -40,6 +50,20 @@ router.post('/reset-password', resetPassword);
 
 // Get the currently authenticated user
 router.get('/me', authenticate, me);
+
+// ─── MFA Routes ──────────────────────────────────────────────────
+
+// Setup MFA (requires authentication)
+router.post('/mfa/setup', authenticate, setupMfa);
+
+// Verify MFA setup (confirm code, enable MFA)
+router.post('/mfa/verify-setup', authenticate, verifyMfaSetup);
+
+// Verify MFA during login (uses temporary cookie, NOT authenticate)
+router.post('/mfa/verify', verifyMfaLogin);
+
+// Disable MFA (requires authentication)
+router.post('/mfa/disable', authenticate, disableMfa);
 
 // Test endpoint to check routing
 router.get('/test', (req, res) => {
