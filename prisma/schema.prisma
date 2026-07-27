@@ -33,6 +33,15 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // ─── Password Reset ─────────────────────────────────────
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
+  // ─── MFA ───────────────────────────────────────────────
+  mfaSecret       String?
+  mfaEnabled      Boolean   @default(false)
+  mfaBackupCodes  String[]  @default([])
+
   members      Member[]
   assignedTasks Task[]  @relation("AssignedTo")
   createdTasks  Task[]  @relation("CreatedBy")
