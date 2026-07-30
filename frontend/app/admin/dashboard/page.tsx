@@ -25,12 +25,20 @@ interface Task {
   requiresApproval: boolean;
 }
 
+interface OrgMembership {
+  id: string;
+  name: string;
+  slug: string;
+  role: 'ADMIN' | 'MEMBER';
+}
+
 interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
   role: 'ADMIN' | 'MEMBER';
+  organisations: OrgMembership[];
 }
 
 export default function AdminDashboard() {
@@ -40,6 +48,15 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // ─── Invite Member State ─────────────────────────────────
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteOrgId, setInviteOrgId] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'ADMIN' | 'MEMBER'>('MEMBER');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
 
   const getToken = () => localStorage.getItem('accessToken');
 
@@ -53,12 +70,14 @@ export default function AdminDashboard() {
 
     const fetchUser = async () => {
       try {
-        const response = await fetch('/api/auth/me', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (response.status === 401) {
           localStorage.removeItem('accessToken');
+          document.cookie = 'accessToken=; path=/; max-age=0';
+          document.cookie = 'user=; path=/; max-age=0';
           router.push('/login');
           return;
         }
@@ -68,11 +87,13 @@ export default function AdminDashboard() {
         const userData = await response.json();
         setUser(userData);
 
-        // If user is NOT admin, redirect to member dashboard
         if (userData.role !== 'ADMIN' && userData.role !== 'admin') {
           router.push('/dashboard');
           return;
         }
+
+        const adminOrg = (userData.organisations || []).find((o: OrgMembership) => o.role === 'ADMIN');
+        if (adminOrg) setInviteOrgId(adminOrg.id);
       } catch (err) {
         console.error('Auth error:', err);
         router.push('/login');
@@ -89,7 +110,7 @@ export default function AdminDashboard() {
     const fetchTasks = async () => {
       try {
         const token = getToken();
-        const response = await fetch('/api/tasks', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -112,7 +133,7 @@ export default function AdminDashboard() {
     setActionLoading(taskId);
     try {
       const token = getToken();
-      const response = await fetch(`/api/tasks/${taskId}/approve`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks/${taskId}/approve`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -136,7 +157,7 @@ export default function AdminDashboard() {
     setActionLoading(taskId);
     try {
       const token = getToken();
-      const response = await fetch(`/api/tasks/${taskId}/reject`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks/${taskId}/reject`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -155,10 +176,51 @@ export default function AdminDashboard() {
     }
   };
 
+  // ─── Invite Member ───────────────────────────────────────
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviteError('');
+    setInviteSuccess('');
+
+    if (!inviteOrgId) {
+      setInviteError('No organisation selected.');
+      return;
+    }
+
+    setInviteLoading(true);
+    try {
+      const token = getToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/members/org/${inviteOrgId}/invite`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to send invite');
+
+      setInviteSuccess(`Invitation sent to ${inviteEmail}.`);
+      setInviteEmail('');
+      setInviteRole('MEMBER');
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Failed to send invite');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
   // ─── Logout ──────────────────────────────────────────────
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
+    document.cookie = 'accessToken=; path=/; max-age=0';
+    document.cookie = 'user=; path=/; max-age=0';
     router.push('/login');
   };
 
@@ -180,6 +242,8 @@ export default function AdminDashboard() {
   const pending = tasks.filter(t => t.status === 'PENDING');
   const approved = tasks.filter(t => t.status === 'APPROVED');
 
+  const adminOrgs = (user?.organisations || []).filter(o => o.role === 'ADMIN');
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -197,17 +261,23 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <nav className="bg-white shadow-md sticky top-0 z-10">
+      <nav className="bg-surface shadow-md sticky top-0 z-10 border-b border-border">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <span className="text-2xl font-bold text-blue-600">OpsShield</span>
+              <span className="text-2xl font-bold text-ink">OpsShield</span>
               <span className="ml-2 text-sm text-blue-600 font-medium">Admin</span>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">
+              <button
+                onClick={() => setShowInviteForm(true)}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+              >
+                ➕ Invite Member
+              </button>
+              <span className="text-sm text-ink">
                 Welcome, {user?.firstName || 'Admin'}
               </span>
               <button
@@ -222,26 +292,32 @@ export default function AdminDashboard() {
           {/* Navigation */}
           <div className="flex space-x-1 overflow-x-auto">
             <Link
+              href="/"
+              className="px-4 py-2 text-sm font-medium text-muted hover:text-ink hover:bg-surface whitespace-nowrap"
+            >
+              🏠 Home
+            </Link>
+            <Link
               href="/admin/dashboard"
-              className="px-4 py-2 text-sm font-medium bg-blue-50 text-blue-600 border-b-2 border-blue-600 whitespace-nowrap"
+              className="px-4 py-2 text-sm font-medium bg-surface text-ink border-b-2 border-ink whitespace-nowrap"
             >
               📊 Dashboard
             </Link>
             <Link
               href="/admin/feature-flags"
-              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              className="px-4 py-2 text-sm font-medium text-muted hover:text-ink hover:bg-surface whitespace-nowrap"
             >
               🚩 Feature Flags
             </Link>
             <Link
               href="/billing"
-              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              className="px-4 py-2 text-sm font-medium text-muted hover:text-ink hover:bg-surface whitespace-nowrap"
             >
               💳 Billing
             </Link>
             <Link
               href="/settings"
-              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              className="px-4 py-2 text-sm font-medium text-muted hover:text-ink hover:bg-surface whitespace-nowrap"
             >
               ⚙️ Settings
             </Link>
@@ -249,15 +325,92 @@ export default function AdminDashboard() {
         </div>
       </nav>
 
+      {/* Invite Member Modal */}
+      {showInviteForm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-20 px-4">
+          <div className="bg-card rounded-lg shadow-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-ink">Invite Member</h2>
+              <button
+                onClick={() => { setShowInviteForm(false); setInviteError(''); setInviteSuccess(''); }}
+                className="text-muted hover:text-ink"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleInvite} className="space-y-4">
+              {adminOrgs.length > 1 && (
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-1">Organisation</label>
+                  <select
+                    value={inviteOrgId}
+                    onChange={(e) => setInviteOrgId(e.target.value)}
+                    className="w-full px-3 py-2 border border-border bg-background text-ink rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    {adminOrgs.map(org => (
+                      <option key={org.id} value={org.id}>{org.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-ink mb-1">Email address</label>
+                <input
+                  type="email"
+                  required
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="colleague@company.com"
+                  className="w-full px-3 py-2 border border-border bg-background text-ink rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-ink mb-1">Role</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as 'ADMIN' | 'MEMBER')}
+                  className="w-full px-3 py-2 border border-border bg-background text-ink rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="MEMBER">Member</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+
+              {inviteError && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+                  {inviteError}
+                </div>
+              )}
+              {inviteSuccess && (
+                <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-md text-sm">
+                  {inviteSuccess}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={inviteLoading}
+                className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {inviteLoading ? 'Sending...' : 'Send Invite'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold mb-6 text-ink">Admin Dashboard</h1>
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-            <h3 className="text-sm font-medium text-gray-500">Total Tasks</h3>
-            <p className="text-3xl font-bold text-gray-900">{tasks.length}</p>
+          <div className="bg-surface p-6 rounded-lg shadow-sm border border-border">
+            <h3 className="text-sm font-medium text-muted">Total Tasks</h3>
+            <p className="text-3xl font-bold text-ink">{tasks.length}</p>
           </div>
           <div className="bg-yellow-50 p-6 rounded-lg shadow-sm border border-yellow-100">
             <h3 className="text-sm font-medium text-yellow-600">Pending</h3>
@@ -279,7 +432,7 @@ export default function AdminDashboard() {
 
         {/* Awaiting Approval Section */}
         {awaitingApproval.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-purple-200 overflow-hidden mb-6">
+          <div className="bg-surface rounded-lg shadow-sm border border-purple-900/40 overflow-hidden mb-6">
             <div className="bg-purple-50 px-6 py-4 border-b border-purple-200">
               <h2 className="text-lg font-semibold text-purple-700">
                 ⏳ Awaiting Approval ({awaitingApproval.length})
@@ -287,31 +440,31 @@ export default function AdminDashboard() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-background border-b border-border">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created By</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Task</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Created By</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Assigned To</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-border">
                   {awaitingApproval.map(task => (
-                    <tr key={task.id} className="hover:bg-gray-50">
+                    <tr key={task.id} className="hover:bg-background">
                       <td className="px-6 py-4">
-                        <div className="font-medium">{task.title}</div>
-                        <div className="text-sm text-gray-500">{task.description}</div>
+                        <div className="font-medium text-ink">{task.title}</div>
+                        <div className="text-sm text-muted">{task.description}</div>
                       </td>
                       <td className="px-6 py-4">
                         <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                           Awaiting Approval
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm">
+                      <td className="px-6 py-4 text-sm text-muted">
                         {task.createdBy.firstName} {task.createdBy.lastName}
                       </td>
-                      <td className="px-6 py-4 text-sm">
+                      <td className="px-6 py-4 text-sm text-muted">
                         {task.assignedTo
                           ? `${task.assignedTo.firstName} ${task.assignedTo.lastName}`
                           : 'Unassigned'
@@ -344,43 +497,43 @@ export default function AdminDashboard() {
         )}
 
         {/* All Tasks */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-surface rounded-lg shadow-sm border border-border overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold">All Tasks</h2>
+            <h2 className="text-lg font-semibold text-ink">All Tasks</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-background border-b border-border">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created By</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Task</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Created By</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Assigned To</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {tasks.filter(t => t.status !== 'AWAITING_APPROVAL').length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={4} className="px-6 py-8 text-center text-muted">
                       No tasks available
                     </td>
                   </tr>
                 ) : (
                   tasks.filter(t => t.status !== 'AWAITING_APPROVAL').map(task => (
-                    <tr key={task.id} className="hover:bg-gray-50">
+                    <tr key={task.id} className="hover:bg-background">
                       <td className="px-6 py-4">
-                        <div className="font-medium">{task.title}</div>
-                        <div className="text-sm text-gray-500">{task.description}</div>
+                        <div className="font-medium text-ink">{task.title}</div>
+                        <div className="text-sm text-muted">{task.description}</div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(task.status)}`}>
                           {task.status.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm">
+                      <td className="px-6 py-4 text-sm text-muted">
                         {task.createdBy.firstName} {task.createdBy.lastName}
                       </td>
-                      <td className="px-6 py-4 text-sm">
+                      <td className="px-6 py-4 text-sm text-muted">
                         {task.assignedTo
                           ? `${task.assignedTo.firstName} ${task.assignedTo.lastName}`
                           : 'Unassigned'

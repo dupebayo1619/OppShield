@@ -16,3 +16,4 @@ aws/
 cookies.txt
 *.cookie
 cookiejar*
+.env

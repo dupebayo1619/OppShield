@@ -1,11 +1,10 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:us-east-1:541592468666:task-definition/opsshield-dev:44",
+    "taskDefinitionArn": "arn:aws:ecs:us-east-1:541592468666:task-definition/opsshield-dev:45",
     "containerDefinitions": [
         {
             "name": "opsshield-app",
             "image": "541592468666.dkr.ecr.us-east-1.amazonaws.com/opsshield-dev:latest",
-            "cpu": 256,
-            "memory": 512,
+            "cpu": 0,
             "portMappings": [
                 {
                     "containerPort": 3000,
@@ -20,8 +19,8 @@
                     "value": "3000"
                 },
                 {
-                    "name": "JWT_SECRET",
-                    "value": "F0djQ7Fxuqy7IraJ9pW/o6rcaGxckZ8c28SFBffV79syZHtnKlvJn8rLVrG67jRFCb8LUKmxtqIwT2LY7/uoxA=="
+                    "name": "PRISMA_QUERY_ENGINE_LIBRARY",
+                    "value": "/app/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node"
                 },
                 {
                     "name": "NODE_ENV",
@@ -33,7 +32,23 @@
             "secrets": [
                 {
                     "name": "DATABASE_URL",
-                    "valueFrom": "opsshield/dev/database-url"
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/database-url-YaWFD5"
+                },
+                {
+                    "name": "JWT_SECRET",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/jwt-signing-secret-cU33bK"
+                },
+                {
+                    "name": "JWT_REFRESH_SECRET",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/jwt-refresh-secret-YaWFD5"
+                },
+                {
+                    "name": "PAYSTACK_SECRET_KEY",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/paystack-secret-key-U7rNAP"
+                },
+                {
+                    "name": "PAYSTACK_PUBLIC_KEY",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/paystack-public-key-OzVejJ"
                 }
             ],
             "logConfiguration": {
@@ -48,10 +63,10 @@
         }
     ],
     "family": "opsshield-dev",
-    "taskRoleArn": "arn:aws:iam::541592468666:role/ecsTaskExecutionRole",
-    "executionRoleArn": "arn:aws:iam::541592468666:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::541592468666:role/opsshield-dev-ecs-task-role",
+    "executionRoleArn": "arn:aws:iam::541592468666:role/opsshield-dev-ecs-execution-role",
     "networkMode": "awsvpc",
-    "revision": 44,
+    "revision": 45,
     "volumes": [],
     "status": "ACTIVE",
     "requiresAttributes": [
@@ -68,13 +83,13 @@
             "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
         },
         {
+            "name": "ecs.capability.secrets.asm.environment-variables"
+        },
+        {
             "name": "com.amazonaws.ecs.capability.task-iam-role"
         },
         {
             "name": "ecs.capability.execution-role-ecr-pull"
-        },
-        {
-            "name": "ecs.capability.secrets.ssm.environment-variables"
         },
         {
             "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
@@ -86,14 +101,14 @@
     "placementConstraints": [],
     "compatibilities": [
         "EC2",
-        "MANAGED_INSTANCES",
-        "FARGATE"
+        "FARGATE",
+        "MANAGED_INSTANCES"
     ],
     "requiresCompatibilities": [
         "FARGATE"
     ],
-    "cpu": "256",
-    "memory": "512",
-    "registeredAt": "2026-07-28T17:05:43.399000+01:00",
+    "cpu": "512",
+    "memory": "1024",
+    "registeredAt": "2026-07-28T17:40:26.164000+01:00",
     "registeredBy": "arn:aws:iam::541592468666:user/bayo"
 }

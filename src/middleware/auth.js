@@ -1,56 +1,71 @@
 const jwt = require('jsonwebtoken');
-const prisma = require('../lib/prisma');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-const authenticate = (req, res, next) => {
+// ─── Authentication Middleware ────────────────────────────────────
+const authenticate = async (req, res, next) => {
+  console.log('🔐 authenticate middleware STARTED');
+  
   try {
-    // Prefer the httpOnly cookie set by login/refresh
-    let token = req.cookies?.accessToken;
-
-    // Fallback: allow Authorization header too (useful for non-browser clients/testing)
-    if (!token) {
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.split(' ')[1];
-      }
-    }
-
-    if (!token) {
+    const authHeader = req.headers.authorization;
+    console.log(`📌 Auth header present: ${!!authHeader}`);
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ No Bearer token found');
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const token = authHeader.split(' ')[1];
+    console.log(`📌 Token received: ${token.substring(0, 20)}...`);
 
-    req.user = {
-      id: decoded.userId || decoded.id || decoded.sub,
-      email: decoded.email,
-      role: decoded.role || 'member',
-      ...decoded
-    };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    console.log(`📌 Token decoded: userId=${decoded.userId}`);
 
-    console.log('🔐 User authenticated:', req.user.id, 'Role:', req.user.role);
-    next();
-  } catch (error) {
-    console.error('Auth error:', error.message);
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      include: {
+        members: {
+          include: {
+            organisation: true
+          }
+        }
+      }
+    });
 
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
+    if (!user) {
+      console.log(`❌ User not found: ${decoded.userId}`);
+      return res.status(401).json({ error: 'User not found' });
     }
 
+    console.log(`✅ User authenticated: ${user.id} Role: ${user.role || 'MEMBER'}`);
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('❌ Authentication error:', error.message);
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Invalid token' });
     }
-
-    return res.status(401).json({ error: 'Authentication failed' });
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    res.status(500).json({ error: 'Authentication failed' });
   }
 };
 
+// ─── Require Admin Middleware ─────────────────────────────────────
 const requireAdmin = (req, res, next) => {
+  console.log('🔑 requireAdmin middleware STARTED');
+  
   if (!req.user) {
+    console.log('❌ No user found in request');
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  if (req.user.role !== 'admin') {
-    console.warn('🔒 Admin access denied for user:', req.user.id, 'Role:', req.user.role);
+  const isAdmin = req.user.role === 'ADMIN' || 
+                   req.user.members?.some(m => m.role === 'ADMIN');
+
+  if (!isAdmin) {
+    console.warn('🔒 Admin access denied for user:', req.user.id);
     return res.status(403).json({ error: 'Admin access required' });
   }
 
@@ -58,10 +73,25 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+// ─── Require Org Member Middleware ───────────────────────────────
 const requireOrgMember = async (req, res, next) => {
+  console.log('👥 requireOrgMember middleware STARTED');
+  
   try {
     const { orgId } = req.params;
+    
+    if (!orgId) {
+      console.log('❌ No orgId in request params');
+      return res.status(400).json({ error: 'Organisation ID required' });
+    }
 
+    if (!req.user) {
+      console.log('❌ No user found in request');
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    console.log(`🔍 Checking membership for user ${req.user.id} in org ${orgId}`);
+    
     const member = await prisma.member.findFirst({
       where: {
         userId: req.user.id,
@@ -70,15 +100,21 @@ const requireOrgMember = async (req, res, next) => {
     });
 
     if (!member) {
+      console.log(`❌ User ${req.user.id} is not a member of org ${orgId}`);
       return res.status(403).json({ error: 'You are not a member of this organisation' });
     }
 
+    console.log(`✅ User ${req.user.id} is a member of org ${orgId}`);
     req.organisation = { id: orgId };
-    req.member = member;
     next();
   } catch (error) {
-    next(error);
+    console.error('❌ requireOrgMember error:', error);
+    res.status(500).json({ error: 'Failed to verify membership' });
   }
 };
 
-module.exports = { authenticate, requireAdmin, requireOrgMember };
+module.exports = {
+  authenticate,
+  requireAdmin,
+  requireOrgMember
+};

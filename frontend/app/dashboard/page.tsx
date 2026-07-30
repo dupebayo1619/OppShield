@@ -53,12 +53,14 @@ export default function MemberDashboard() {
 
     const fetchUser = async () => {
       try {
-        const response = await fetch('/api/auth/me', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (response.status === 401) {
           localStorage.removeItem('accessToken');
+          document.cookie = 'accessToken=; path=/; max-age=0';
+          document.cookie = 'user=; path=/; max-age=0';
           router.push('/login');
           return;
         }
@@ -68,7 +70,6 @@ export default function MemberDashboard() {
         const userData = await response.json();
         setUser(userData);
 
-        // If user is admin, redirect to admin dashboard
         if (userData.role === 'ADMIN' || userData.role === 'admin') {
           router.push('/admin/dashboard');
           return;
@@ -159,6 +160,8 @@ export default function MemberDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
+    document.cookie = 'accessToken=; path=/; max-age=0';
+    document.cookie = 'user=; path=/; max-age=0';
     router.push('/login');
   };
 
@@ -241,17 +244,17 @@ export default function MemberDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <nav className="bg-white shadow-md sticky top-0 z-10">
+      <nav className="bg-surface shadow-md sticky top-0 z-10 border-b border-border">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <span className="text-2xl font-bold text-blue-600">OpsShield</span>
-              <span className="ml-2 text-sm text-gray-500">Member</span>
+              <span className="text-2xl font-bold text-ink">OpsShield</span>
+              <span className="ml-2 text-sm text-muted">Member</span>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">
+              <span className="text-sm text-ink">
                 Welcome, {user?.firstName || 'User'}
               </span>
               <button
@@ -264,22 +267,28 @@ export default function MemberDashboard() {
           </div>
 
           {/* Navigation */}
-          <div className="flex space-x-1">
+          <div className="flex space-x-1 overflow-x-auto">
+            <Link
+              href="/"
+              className="px-4 py-2 text-sm font-medium text-muted hover:text-ink hover:bg-surface whitespace-nowrap"
+            >
+              🏠 Home
+            </Link>
             <Link
               href="/dashboard"
-              className="px-4 py-2 text-sm font-medium bg-blue-50 text-blue-600 border-b-2 border-blue-600"
+              className="px-4 py-2 text-sm font-medium bg-surface text-ink border-b-2 border-ink whitespace-nowrap"
             >
               📊 Dashboard
             </Link>
             <Link
               href="/tasks"
-              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-muted hover:text-ink hover:bg-surface whitespace-nowrap"
             >
               📋 Tasks
             </Link>
             <Link
               href="/settings"
-              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-muted hover:text-ink hover:bg-surface whitespace-nowrap"
             >
               ⚙️ Settings
             </Link>
@@ -289,13 +298,13 @@ export default function MemberDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6">My Tasks</h1>
+        <h1 className="text-2xl font-bold mb-6 text-ink">My Tasks</h1>
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-            <h3 className="text-sm font-medium text-gray-500">Total Tasks</h3>
-            <p className="text-3xl font-bold text-gray-900">{tasks.length}</p>
+          <div className="bg-surface p-6 rounded-lg shadow-sm border border-border">
+            <h3 className="text-sm font-medium text-muted">Total Tasks</h3>
+            <p className="text-3xl font-bold text-ink">{tasks.length}</p>
           </div>
           <div className="bg-yellow-50 p-6 rounded-lg shadow-sm border border-yellow-100">
             <h3 className="text-sm font-medium text-yellow-600">Pending</h3>
@@ -318,51 +327,51 @@ export default function MemberDashboard() {
         </div>
 
         {/* Task List */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-surface rounded-lg shadow-sm border border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-background border-b border-border">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                     Task
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                     Created By
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                     Assigned To
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
                     Action
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {tasks.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={5} className="px-6 py-8 text-center text-muted">
                       No tasks available
                     </td>
                   </tr>
                 ) : (
                   tasks.map((task) => (
-                    <tr key={task.id} className="hover:bg-gray-50 transition">
+                    <tr key={task.id} className="hover:bg-background transition">
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{task.title}</div>
-                        <div className="text-sm text-gray-500">{task.description}</div>
+                        <div className="font-medium text-ink">{task.title}</div>
+                        <div className="text-sm text-muted">{task.description}</div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(task.status)}`}>
                           {task.status.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-muted">
                         {task.createdBy.firstName} {task.createdBy.lastName}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-muted">
                         {task.assignedTo
                           ? `${task.assignedTo.firstName} ${task.assignedTo.lastName}`
                           : 'Unassigned'

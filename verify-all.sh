@@ -1,125 +1,76 @@
 #!/bin/bash
+echo "===================================================="
+echo "1. accept()/complete() in tasks controller"
+echo "===================================================="
+grep -q "async function accept" ~/OppShield/src/controllers/tasks.js && echo "✅ accept() found" || echo "❌ accept() NOT found"
+grep -q "async function complete" ~/OppShield/src/controllers/tasks.js && echo "✅ complete() found" || echo "❌ complete() NOT found"
+grep -A 10 "module.exports" ~/OppShield/src/controllers/tasks.js | grep -q "accept" && echo "✅ accept exported" || echo "❌ accept NOT exported"
+grep -A 10 "module.exports" ~/OppShield/src/controllers/tasks.js | grep -q "complete" && echo "✅ complete exported" || echo "❌ complete NOT exported"
 
-echo "═══════════════════════════════════════════════════════════════"
-echo "🔍 OPP SHIELD — COMPLETE REPO VERIFICATION"
-echo "📅 $(date)"
-echo "═══════════════════════════════════════════════════════════════"
 echo ""
+echo "===================================================="
+echo "2. accept/complete routes"
+echo "===================================================="
+grep -q "taskController.accept\|taskController\.accept" ~/OppShield/src/routes/tasks.js && echo "✅ accept route wired" || echo "❌ accept route NOT wired"
+grep -q "taskController.complete\|taskController\.complete" ~/OppShield/src/routes/tasks.js && echo "✅ complete route wired" || echo "❌ complete route NOT wired"
 
-# 1. DOCKER CONTAINERS
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 1. DOCKER CONTAINERS"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-docker ps --format "table {{.Names}}\t{{.Status}}"
 echo ""
-
-# 2. LOCAL DATABASE TABLES
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 2. LOCAL DATABASE TABLES"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-docker exec -it oppshield_db_1 psql -U opsshield -d opsshield -c "\dt" 2>/dev/null || echo "❌ Database not accessible"
+echo "===================================================="
+echo "3. DONE vs COMPLETED enum consistency"
+echo "===================================================="
+echo "-- Schema enum:"
+grep -A 10 "enum TaskStatus" ~/OppShield/prisma/schema.prisma
 echo ""
+if grep -q "'COMPLETED'" ~/OppShield/frontend/app/tasks/page.tsx; then
+  echo "❌ 'COMPLETED' still referenced in frontend (mismatch not fully fixed)"
+else
+  echo "✅ No stray 'COMPLETED' references in frontend"
+fi
+grep -q "'DONE'" ~/OppShield/frontend/app/tasks/page.tsx && echo "✅ 'DONE' used in frontend" || echo "❌ 'DONE' NOT found in frontend"
 
-# 3. LOCAL DATABASE USERS
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 3. LOCAL DATABASE USERS"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-docker exec -it oppshield_db_1 psql -U opsshield -d opsshield -c "SELECT email, role FROM \"User\";" 2>/dev/null || echo "❌ Users not found"
 echo ""
+echo "===================================================="
+echo "4. Dashboard client-side route guard"
+echo "===================================================="
+if [ -f ~/OppShield/frontend/app/dashboard/layout.tsx ]; then
+  if grep -q "role !== 'admin'\|role.*admin" ~/OppShield/frontend/app/dashboard/layout.tsx; then
+    echo "✅ Admin role check found in layout.tsx"
+  else
+    echo "❌ layout.tsx exists but has NO role check (still a pass-through)"
+  fi
+  if grep -q "router.push('/login')" ~/OppShield/frontend/app/dashboard/layout.tsx; then
+    echo "✅ Redirects unauthenticated users"
+  else
+    echo "❌ No auth-token redirect found"
+  fi
+else
+  echo "❌ frontend/app/dashboard/layout.tsx does not exist"
+fi
 
-# 4. LOCAL AUTH (ADMIN)
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 4. LOCAL AUTH (ADMIN)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-curl -s -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"admin@opsshield.io","password":"Password123!"}' | jq -r '"✅ " + .user.email + " | Role: " + .user.role' 2>/dev/null || echo "❌ Failed"
 echo ""
+echo "===================================================="
+echo "5. Dashboard backend admin check"
+echo "===================================================="
+if [ -f ~/OppShield/src/controllers/dashboard.js ]; then
+  grep -q "req.user.role !== 'admin'" ~/OppShield/src/controllers/dashboard.js && echo "✅ Backend admin check present" || echo "❌ No backend admin check in dashboard.js"
+  grep -q "new PrismaClient()" ~/OppShield/src/controllers/dashboard.js && echo "⚠️  Uses its own 'new PrismaClient()' instead of shared lib/prisma — check for connection pool duplication" || echo "✅ Not instantiating a separate PrismaClient"
+else
+  echo "❌ src/controllers/dashboard.js does not exist"
+fi
 
-# 5. LOCAL AUTH (MEMBER)
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 5. LOCAL AUTH (MEMBER)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-curl -s -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"member@opsshield.io","password":"Password123!"}' | jq -r '"✅ " + .user.email + " | Role: " + .user.role' 2>/dev/null || echo "❌ Failed"
+if [ -f ~/OppShield/src/routes/dashboard.js ]; then
+  grep -q "authenticate" ~/OppShield/src/routes/dashboard.js && echo "✅ Dashboard route requires authentication" || echo "❌ No authenticate middleware on dashboard route"
+else
+  echo "❌ src/routes/dashboard.js does not exist"
+fi
+
 echo ""
+echo "===================================================="
+echo "6. Organizations seeded"
+echo "===================================================="
+docker exec -it oppshield_db_1 psql -U opsshield -d opsshield -c "SELECT name, slug FROM \"Organisation\";" 2>/dev/null || echo "❌ Could not query DB (is oppshield_db_1 running?)"
 
-# 6. LOCAL HEALTH
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 6. LOCAL HEALTH"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-curl -s http://localhost:3000/health | jq . 2>/dev/null || echo "❌ Failed"
 echo ""
-
-# 7. STAGING HEALTH
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 7. STAGING HEALTH"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-curl -s https://staging.srzoh.com.ng/health | jq . 2>/dev/null || echo "❌ Failed"
-echo ""
-
-# 8. STAGING AUTH (ADMIN)
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 8. STAGING AUTH (ADMIN)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-curl -s -X POST https://staging.srzoh.com.ng/api/auth/login -H "Content-Type: application/json" -d '{"email":"admin@opsshield.io","password":"Password123!"}' | jq -r '"✅ " + .user.email + " | Role: " + .user.role' 2>/dev/null || echo "❌ Failed"
-echo ""
-
-# 9. STAGING AUTH (MEMBER)
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 9. STAGING AUTH (MEMBER)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-curl -s -X POST https://staging.srzoh.com.ng/api/auth/login -H "Content-Type: application/json" -d '{"email":"member@opsshield.io","password":"Password123!"}' | jq -r '"✅ " + .user.email + " | Role: " + .user.role' 2>/dev/null || echo "❌ Failed"
-echo ""
-
-# 10. FRONTEND HEALTH
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 10. FRONTEND HEALTH"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-curl -s http://localhost:3001/api/health | jq . 2>/dev/null || echo "❌ Failed"
-echo ""
-
-# 11. FRONTEND PAGES
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 11. FRONTEND PAGES"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-curl -s http://localhost:3001/login > /dev/null && echo "   ✅ Login" || echo "   ❌ Login"
-curl -s http://localhost:3001/dashboard > /dev/null && echo "   ✅ Dashboard" || echo "   ❌ Dashboard"
-curl -s http://localhost:3001/tasks > /dev/null && echo "   ✅ Tasks" || echo "   ❌ Tasks"
-curl -s http://localhost:3001/billing > /dev/null && echo "   ✅ Billing" || echo "   ❌ Billing"
-curl -s http://localhost:3001/admin/feature-flags > /dev/null && echo "   ✅ Feature Flags Admin" || echo "   ❌ Feature Flags Admin"
-echo ""
-
-# 12. SECURITY HEADERS
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 12. SECURITY HEADERS"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "   🔒 X-Frame-Options: $(curl -sI https://staging.srzoh.com.ng/health | grep -i "x-frame-options" || echo '❌ Missing')"
-echo "   🔒 X-Content-Type-Options: $(curl -sI https://staging.srzoh.com.ng/health | grep -i "x-content-type-options" || echo '❌ Missing')"
-echo "   🔒 Strict-Transport-Security: $(curl -sI https://staging.srzoh.com.ng/health | grep -i "strict-transport-security" || echo '❌ Missing')"
-echo ""
-
-# 13. GIT STATUS
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 13. GIT STATUS"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-git status -sb
-echo ""
-
-# 14. FEATURE FLAGS
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 14. FEATURE FLAGS"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "   📍 new-billing-ui: $(grep -c 'new-billing-ui' frontend/lib/featureFlags.ts 2>/dev/null || echo 0)"
-echo "   📍 new-registration-flow: $(grep -c 'new-registration-flow' frontend/lib/featureFlags.ts 2>/dev/null || echo 0)"
-echo "   📍 analytics-widget: $(grep -c 'analytics-widget' frontend/lib/featureFlags.ts 2>/dev/null || echo 0)"
-echo "   📍 bulk-actions: $(grep -c 'bulk-actions' frontend/lib/featureFlags.ts 2>/dev/null || echo 0)"
-echo ""
-
-# 15. TASKS PAGE FIX
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 15. TASKS PAGE FIX (Array.isArray)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-grep -c "Array.isArray" frontend/app/tasks/page.tsx 2>/dev/null | awk '{print "   ✅ Found:", $1, "occurrences"}'
-echo ""
-
-echo "═══════════════════════════════════════════════════════════════"
-echo "✅ COMPLETE REPO VERIFICATION FINISHED"
-echo "═══════════════════════════════════════════════════════════════"
+echo "===================================================="
+echo "DONE — review any ❌ above"
+echo "===================================================="

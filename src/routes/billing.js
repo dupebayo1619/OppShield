@@ -2,29 +2,16 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
+const { getOrganisation } = require('../middleware/organisation');
+const billingController = require('../controllers/billing');
 
-// GET billing information
-router.get('/', authenticate, async (req, res) => {
-  try {
-    // For now, return mock billing data
-    const billingData = {
-      plan: 'Free',
-      price: 0,
-      billingCycle: 'monthly',
-      nextBillingDate: null,
-      usage: {
-        tasksUsed: 0,
-        tasksLimit: 100,
-        storageUsed: '0 MB',
-        storageLimit: '1 GB'
-      }
-    };
+router.use(authenticate);
+router.use(getOrganisation);
 
-    res.json(billingData);
-  } catch (error) {
-    console.error('Error fetching billing:', error);
-    res.status(500).json({ error: 'Failed to fetch billing information' });
-  }
-});
+// GET billing/payment history for the org
+router.get('/', billingController.history);
+
+// POST start a Paystack checkout for a plan
+router.post('/checkout', billingController.initiate);
 
 module.exports = router;
