@@ -40,6 +40,9 @@ async function register(req, res, next) {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
+    if (!password || password.length < 8) {
+      return res.status(422).json({ error: 'Password must be at least 8 characters' });
+    }
     const passwordHash = await bcrypt.hash(password, 12);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -66,7 +69,7 @@ async function register(req, res, next) {
         data: {
           userId: user.id,
           organisationId: organisation.id,
-          role: 'OWNER',
+          role: 'ADMIN',
         },
       });
 
