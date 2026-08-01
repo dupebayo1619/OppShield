@@ -17,3 +17,6 @@ cookies.txt
 *.cookie
 cookiejar*
 .env
+cookies.txt
+frontend/cookies.txt
+public/server/
