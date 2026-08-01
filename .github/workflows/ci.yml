@@ -113,15 +113,15 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/opsshield:$IMAGE_TAG .
-          docker build -t $ECR_REGISTRY/opsshield:latest .
-          docker push $ECR_REGISTRY/opsshield:$IMAGE_TAG
-          docker push $ECR_REGISTRY/opsshield:latest
+          docker build -t $ECR_REGISTRY/opsshield-dev:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/opsshield-dev:latest .
+          docker push $ECR_REGISTRY/opsshield-dev:$IMAGE_TAG
+          docker push $ECR_REGISTRY/opsshield-dev:latest
 
       - name: Container vulnerability scan (Trivy)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.login-ecr.outputs.registry }}/opsshield:${{ github.sha }}
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/opsshield-dev:${{ github.sha }}
           severity: CRITICAL
           exit-code: 1
 
