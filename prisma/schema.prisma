@@ -114,6 +114,7 @@ model Task {
   description    String?
   status         TaskStatus @default(PENDING)
   requiresApproval Boolean  @default(false)
+  completedAt    DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
