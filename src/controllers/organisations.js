@@ -1,5 +1,19 @@
+// src/controllers/organisations.js
 const prisma = require('../lib/prisma');
 const audit  = require('../lib/audit');
+
+// List all organisations for the current user
+async function list(req, res, next) {
+  try {
+    const members = await prisma.member.findMany({
+      where: { userId: req.user.id },
+      include: { organisation: true }
+    });
+    
+    const organisations = members.map(m => m.organisation);
+    return res.json(organisations);
+  } catch (err) { next(err); }
+}
 
 async function get(req, res, next) {
   try {
@@ -19,7 +33,6 @@ async function get(req, res, next) {
 
 async function update(req, res, next) {
   try {
-    // Strict allowlist — name only. Plan changes go through billing only.
     const { name } = req.body;
     const org = await prisma.organisation.update({
       where: { id: req.organisation.id },
@@ -67,4 +80,4 @@ async function verifyAuditChain(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { get, update, auditLog, verifyAuditChain };
+module.exports = { list, get, update, auditLog, verifyAuditChain };

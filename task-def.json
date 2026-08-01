@@ -1,0 +1,99 @@
+{
+    "taskDefinitionArn": "arn:aws:ecs:us-east-1:541592468666:task-definition/opsshield-dev:44",
+    "containerDefinitions": [
+        {
+            "name": "opsshield-app",
+            "image": "541592468666.dkr.ecr.us-east-1.amazonaws.com/opsshield-dev:latest",
+            "cpu": 256,
+            "memory": 512,
+            "portMappings": [
+                {
+                    "containerPort": 3000,
+                    "hostPort": 3000,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "PORT",
+                    "value": "3000"
+                },
+                {
+                    "name": "JWT_SECRET",
+                    "value": "F0djQ7Fxuqy7IraJ9pW/o6rcaGxckZ8c28SFBffV79syZHtnKlvJn8rLVrG67jRFCb8LUKmxtqIwT2LY7/uoxA=="
+                },
+                {
+                    "name": "NODE_ENV",
+                    "value": "production"
+                }
+            ],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "secrets": [
+                {
+                    "name": "DATABASE_URL",
+                    "valueFrom": "opsshield/dev/database-url"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/opsshield-dev",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            },
+            "systemControls": []
+        }
+    ],
+    "family": "opsshield-dev",
+    "taskRoleArn": "arn:aws:iam::541592468666:role/ecsTaskExecutionRole",
+    "executionRoleArn": "arn:aws:iam::541592468666:role/ecsTaskExecutionRole",
+    "networkMode": "awsvpc",
+    "revision": 44,
+    "volumes": [],
+    "status": "ACTIVE",
+    "requiresAttributes": [
+        {
+            "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+        },
+        {
+            "name": "ecs.capability.execution-role-awslogs"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.ecr-auth"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.task-iam-role"
+        },
+        {
+            "name": "ecs.capability.execution-role-ecr-pull"
+        },
+        {
+            "name": "ecs.capability.secrets.ssm.environment-variables"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+        },
+        {
+            "name": "ecs.capability.task-eni"
+        }
+    ],
+    "placementConstraints": [],
+    "compatibilities": [
+        "EC2",
+        "MANAGED_INSTANCES",
+        "FARGATE"
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "registeredAt": "2026-07-28T17:05:43.399000+01:00",
+    "registeredBy": "arn:aws:iam::541592468666:user/bayo"
+}

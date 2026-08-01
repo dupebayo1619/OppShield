@@ -1,49 +1,73 @@
-const router = require('express').Router();
-const { body } = require('express-validator');
-const { validate } = require('../middleware/validate');
+// src/routes/auth.js
+const express = require('express');
+const router = express.Router();
+const {
+  register,
+  login,
+  refresh,
+  logout,
+  forgotPassword,
+  resetPassword,
+  me,
+  setupMfa,
+  verifyMfaSetup,
+  verifyMfaLogin,
+  disableMfa
+} = require('../controllers/auth');
 const { authenticate } = require('../middleware/auth');
-const authController = require('../controllers/auth');
+const { featureFlags } = require('../services/featureFlags');
 
-router.post('/register',
-  [
-    body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-    body('firstName').trim().notEmpty(),
-    body('lastName').trim().notEmpty(),
-    body('orgName').trim().notEmpty().withMessage('Organisation name is required'),
-  ],
-  validate,
-  authController.register
-);
+// Register a new user (wrapped in feature flag)
+router.post('/register', async (req, res, next) => {
+  try {
+    const isRegistrationEnabled = featureFlags.isEnabled('new-registration-flow');
+    if (!isRegistrationEnabled) {
+      return res.status(403).json({
+        error: 'Registration is temporarily disabled. Please try again later.'
+      });
+    }
+    register(req, res, next);
+  } catch (error) {
+    console.error('Feature flag check failed:', error);
+    register(req, res, next);
+  }
+});
 
-router.post('/login',
-  [
-    body('email').isEmail().normalizeEmail(),
-    body('password').notEmpty(),
-  ],
-  validate,
-  authController.login
-);
+// Login a user (no feature flag needed)
+router.post('/login', login);
 
-router.post('/refresh', authController.refresh);
+// Refresh access token using the httpOnly refresh cookie
+router.post('/refresh', refresh);
 
-router.post('/logout', authenticate, authController.logout);
+// Logout — clears auth cookies
+router.post('/logout', authenticate, logout);
 
-router.post('/forgot-password',
-  [body('email').isEmail().normalizeEmail()],
-  validate,
-  authController.forgotPassword
-);
+// Request a password reset
+router.post('/forgot-password', forgotPassword);
 
-router.post('/reset-password',
-  [
-    body('token').notEmpty(),
-    body('password').isLength({ min: 8 }),
-  ],
-  validate,
-  authController.resetPassword
-);
+// Reset password with a valid token
+router.post('/reset-password', resetPassword);
 
-router.get('/me', authenticate, authController.me);
+// Get the currently authenticated user
+router.get('/me', authenticate, me);
+
+// ─── MFA Routes ──────────────────────────────────────────────────
+
+// Setup MFA (requires authentication)
+router.post('/mfa/setup', authenticate, setupMfa);
+
+// Verify MFA setup (confirm code, enable MFA)
+router.post('/mfa/verify-setup', authenticate, verifyMfaSetup);
+
+// Verify MFA during login (uses temporary cookie, NOT authenticate)
+router.post('/mfa/verify', verifyMfaLogin);
+
+// Disable MFA (requires authentication)
+router.post('/mfa/disable', authenticate, disableMfa);
+
+// Test endpoint to check routing
+router.get('/test', (req, res) => {
+  res.json({ message: 'Auth route is working!' });
+});
 
 module.exports = router;

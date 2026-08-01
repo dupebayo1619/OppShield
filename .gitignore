@@ -7,3 +7,16 @@ coverage/
 *.log
 .DS_Store
 dist/
+.env
+.env.*
+stackbridge/
+awscliv2.zip
+aws/
+aws/
+cookies.txt
+*.cookie
+cookiejar*
+.env
+cookies.txt
+frontend/cookies.txt
+public/server/

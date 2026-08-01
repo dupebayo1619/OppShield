@@ -1,66 +1,45 @@
-const router = require('express').Router();
-const { body, param } = require('express-validator');
-const { authenticate, requireOrgMember, requireAdmin } = require('../middleware/auth');
-const { validate } = require('../middleware/validate');
+// src/routes/tasks.js
+const express = require('express');
+const router = express.Router();
+const { authenticate, requireAdmin } = require('../middleware/auth');
+const { getOrganisation } = require('../middleware/organisation');
 const taskController = require('../controllers/tasks');
 
-// All task routes require authentication and org membership
-// requireOrgMember is the IDOR defence — it scopes every request to
-// the authenticated user's organisation before any data is touched
+// All task routes need authentication and organisation
+router.use(authenticate);
+router.use(getOrganisation);
 
-router.get('/org/:orgId',
-  authenticate, requireOrgMember,
-  taskController.list
-);
+// ─── Task Routes ────────────────────────────────────────────────
 
-router.post('/org/:orgId',
-  authenticate, requireOrgMember,
-  [
-    body('title').trim().notEmpty().isLength({ max: 200 }),
-    body('description').optional().trim().isLength({ max: 2000 }),
-    body('requiresApproval').optional().isBoolean(),
-    body('assignedToId').optional().isUUID(),
-  ],
-  validate,
-  taskController.create
-);
+// Get all tasks
+router.get('/', taskController.list);
 
-router.get('/org/:orgId/:taskId',
-  authenticate, requireOrgMember,
-  taskController.get
-);
+// Get task by ID
+router.get('/:taskId', taskController.get);
 
-router.patch('/org/:orgId/:taskId',
-  authenticate, requireOrgMember,
-  [
-    // Allowlist — ONLY these fields can be updated. No role, no orgId, no createdById.
-    body('title').optional().trim().notEmpty().isLength({ max: 200 }),
-    body('description').optional().trim().isLength({ max: 2000 }),
-    body('status').optional().isIn(['PENDING','IN_PROGRESS','AWAITING_APPROVAL','DONE']),
-    body('assignedToId').optional().isUUID(),
-  ],
-  validate,
-  taskController.update
-);
+// Create task
+router.post('/', requireAdmin, taskController.create);
 
-router.delete('/org/:orgId/:taskId',
-  authenticate, requireOrgMember, requireAdmin,
-  taskController.remove
-);
+// Update task
+router.put('/:taskId', taskController.update);
 
-// Approval flow
-router.post('/org/:orgId/:taskId/approve',
-  authenticate, requireOrgMember, requireAdmin,
-  [body('note').optional().trim().isLength({ max: 500 })],
-  validate,
-  taskController.approve
-);
+// Delete task
+router.delete('/:taskId', taskController.remove);
 
-router.post('/org/:orgId/:taskId/reject',
-  authenticate, requireOrgMember, requireAdmin,
-  [body('note').optional().trim().isLength({ max: 500 })],
-  validate,
-  taskController.reject
-);
+// ─── Approval Routes ────────────────────────────────────────────
+
+// Approve task (Admin only)
+router.post('/:taskId/approve', requireAdmin, taskController.approve);
+
+// Reject task (Admin only)
+router.post('/:taskId/reject', requireAdmin, taskController.reject);
+
+// ─── Member Workflow Routes ─────────────────────────────────────
+
+// Accept task (Member: PENDING → IN_PROGRESS)
+router.post('/:taskId/accept', taskController.accept);
+
+// Complete task (Member: IN_PROGRESS → AWAITING_APPROVAL)
+router.post('/:taskId/complete', taskController.complete);
 
 module.exports = router;

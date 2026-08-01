@@ -1,10 +1,42 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  STARTER
+  PRO
+}
+
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  AWAITING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BillingStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }
 
 model Organisation {
@@ -29,13 +61,23 @@ model User {
   passwordHash String
   firstName    String
   lastName     String
+  role         String   @default("member")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // ─── Password Reset ─────────────────────────────────────
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
+  // ─── MFA ───────────────────────────────────────────────
+  mfaSecret       String?
+  mfaEnabled      Boolean   @default(false)
+  mfaBackupCodes  String[]  @default([])
 
   members      Member[]
   assignedTasks Task[]  @relation("AssignedTo")
   createdTasks  Task[]  @relation("CreatedBy")
-  approvals     Approval[]
+  approvals    Approval[]
   refreshTokens RefreshToken[]
 }
 
@@ -72,6 +114,7 @@ model Task {
   description    String?
   status         TaskStatus @default(PENDING)
   requiresApproval Boolean  @default(false)
+  completedAt    DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
@@ -85,18 +128,19 @@ model Task {
   approvals      Approval[]
 }
 
+// ─── UPDATED APPROVAL MODEL ──────────────────────────────
 model Approval {
-  id        String         @id @default(uuid())
-  status    ApprovalStatus @default(PENDING)
-  note      String?
-  createdAt DateTime       @default(now())
+  id           String         @id @default(uuid())
+  status       ApprovalStatus @default(PENDING)
+  comment      String?
+  createdAt    DateTime       @default(now())
+  taskId       String
+  approvedById String?
 
-  taskId    String
-  userId    String
-
-  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User @relation(fields: [userId], references: [id])
+  task         Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  approvedBy   User? @relation(fields: [approvedById], references: [id])
 }
+// ──────────────────────────────────────────────────────────
 
 model Billing {
   id              String        @id @default(uuid())
@@ -139,36 +183,4 @@ model RefreshToken {
 
   userId    String
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-enum Plan {
-  FREE
-  STARTER
-  PRO
-}
-
-enum MemberRole {
-  ADMIN
-  MEMBER
-}
-
-enum TaskStatus {
-  PENDING
-  IN_PROGRESS
-  AWAITING_APPROVAL
-  APPROVED
-  REJECTED
-  DONE
-}
-
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum BillingStatus {
-  PENDING
-  SUCCESS
-  FAILED
 }
