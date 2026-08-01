@@ -1,0 +1,1 @@
+const crypto = require("crypto"); const bcrypt = require("bcryptjs"); function generateResetToken() { return crypto.randomBytes(32).toString("hex"); } function hashToken(token) { return bcrypt.hashSync(token, 10); } function isTokenExpired(timestamp) { return Date.now() - timestamp > 15 * 60 * 1000; } module.exports = { generateResetToken, hashToken, isTokenExpired };

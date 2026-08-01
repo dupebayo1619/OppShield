@@ -1,7 +1,9 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const audit  = require('../lib/audit');
 const logger = require('../lib/logger');
+const { sendInviteEmail } = require('../lib/mailer');
 
 async function invite(req, res, next) {
   try {
@@ -21,18 +23,31 @@ async function invite(req, res, next) {
       if (existing) return res.status(409).json({ error: 'User is already a member' });
     }
 
+    const token = crypto.randomBytes(32).toString('hex');
+
     const invite = await prisma.invite.create({
       data: {
         email,
+        token,
         role,
         organisationId: req.organisation.id,
+        invitedById:    req.user.id,
         expiresAt:      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       }
     });
 
-    // TODO: send invite email via Nodemailer
-    // The invite URL should be: ${FRONTEND_URL}/accept-invite?token=${invite.token}
-    logger.info('Invite created', { email, orgId: req.organisation.id, token: invite.token });
+    // Send invite email
+    try {
+      await sendInviteEmail({
+        to: email,
+        token: invite.token,
+        orgName: req.organisation.name,
+      });
+      logger.info('Invite email sent', { email, orgId: req.organisation.id });
+    } catch (mailErr) {
+      logger.error('Failed to send invite email', { error: mailErr.message, email });
+      // Don't fail the request if email fails - invite is still created
+    }
 
     await audit.log({
       action:         'member.invite',
@@ -45,15 +60,22 @@ async function invite(req, res, next) {
     });
 
     return res.status(201).json({ message: 'Invitation sent', inviteId: invite.id });
-  } catch (err) { next(err); }
+  } catch (err) { 
+    logger.error('Invite error:', err);
+    next(err); 
+  }
 }
 
 async function acceptInvite(req, res, next) {
   try {
     const { token, password, firstName, lastName } = req.body;
 
-    const invite = await prisma.invite.findUnique({ where: { token } });
-    if (!invite || invite.expiresAt < new Date() || invite.acceptedAt) {
+    const invite = await prisma.invite.findUnique({ 
+      where: { token },
+      include: { organisation: true }
+    });
+    
+    if (!invite || invite.expiresAt < new Date() || invite.status !== 'PENDING') {
       return res.status(400).json({ error: 'Invalid or expired invitation' });
     }
 
@@ -66,7 +88,13 @@ async function acceptInvite(req, res, next) {
       }
       const passwordHash = await bcrypt.hash(password, 12);
       user = await prisma.user.create({
-        data: { email: invite.email, passwordHash, firstName, lastName }
+        data: { 
+          email: invite.email, 
+          passwordHash, 
+          firstName, 
+          lastName,
+          role: 'member',
+        }
       });
     }
 
@@ -80,7 +108,7 @@ async function acceptInvite(req, res, next) {
       }),
       prisma.invite.update({
         where: { id: invite.id },
-        data:  { acceptedAt: new Date() },
+        data:  { status: 'ACCEPTED' },
       }),
     ]);
 
@@ -94,7 +122,10 @@ async function acceptInvite(req, res, next) {
     });
 
     return res.json({ message: 'Invitation accepted' });
-  } catch (err) { next(err); }
+  } catch (err) { 
+    logger.error('Accept invite error:', err);
+    next(err); 
+  }
 }
 
 async function remove(req, res, next) {
@@ -122,7 +153,10 @@ async function remove(req, res, next) {
     });
 
     return res.json({ message: 'Member removed' });
-  } catch (err) { next(err); }
+  } catch (err) { 
+    logger.error('Remove member error:', err);
+    next(err); 
+  }
 }
 
 async function updateRole(req, res, next) {
@@ -154,7 +188,10 @@ async function updateRole(req, res, next) {
     });
 
     return res.json({ member: updated });
-  } catch (err) { next(err); }
+  } catch (err) { 
+    logger.error('Update role error:', err);
+    next(err); 
+  }
 }
 
 module.exports = { invite, acceptInvite, remove, updateRole };

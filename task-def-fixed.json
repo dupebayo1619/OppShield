@@ -1,0 +1,60 @@
+{
+  "containerDefinitions": [
+    {
+      "name": "opsshield-app",
+      "image": "541592468666.dkr.ecr.us-east-1.amazonaws.com/opsshield-dev:latest",
+      "cpu": 256,
+      "memory": 512,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "3000"
+        },
+        {
+          "name": "JWT_SECRET",
+          "value": "F0djQ7Fxuqy7IraJ9pW/o6rcaGxckZ8c28SFBffV79syZHtnKlvJn8rLVrG67jRFCb8LUKmxtqIwT2LY7/uoxA=="
+        },
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        }
+      ],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:ssm:us-east-1:541592468666:parameter/opsshield/dev/database-url"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/opsshield-dev",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "systemControls": []
+    }
+  ],
+  "family": "opsshield-dev",
+  "taskRoleArn": "arn:aws:iam::541592468666:role/ecsTaskExecutionRole",
+  "executionRoleArn": "arn:aws:iam::541592468666:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "volumes": [],
+  "placementConstraints": [],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "256",
+  "memory": "512"
+}

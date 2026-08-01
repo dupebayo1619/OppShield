@@ -1,0 +1,46 @@
+{
+  "family": "opsshield-dev",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "opsshield-app",
+      "image": "541592468666.dkr.ecr.us-east-1.amazonaws.com/opsshield-dev:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "3000"
+        },
+        {
+          "name": "PRISMA_QUERY_ENGINE_LIBRARY",
+          "value": "/app/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node"
+        },
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/database-url-YaWFD5"
+        },
+        {
+          "name": "JWT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/jwt-signing-secret-cU33bK"
+        }
+      ]
+    }
+  ],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::541592468666:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::541592468666:role/ecsTaskRole"
+}

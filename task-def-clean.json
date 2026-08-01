@@ -1,0 +1,73 @@
+{
+  "containerDefinitions": [
+    {
+      "name": "opsshield-app",
+      "image": "541592468666.dkr.ecr.us-east-1.amazonaws.com/opsshield-app:latest",
+      "cpu": 0,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp",
+          "name": "opsshield-app-3000-tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "PRISMA_QUERY_ENGINE_LIBRARY",
+          "value": "/app/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node"
+        },
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "PORT",
+          "value": "3000"
+        },
+        {
+          "name": "TRUST_PROXY",
+          "value": "true"
+        }
+      ],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/database-url-YaWFD5"
+        },
+        {
+          "name": "JWT_REFRESH_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/jwt-refresh-secret-YaWFD5"
+        },
+        {
+          "name": "JWT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:541592468666:secret:opsshield/dev/jwt-signing-secret-cU33bK"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/opsshield-dev",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        },
+        "secretOptions": []
+      },
+      "systemControls": []
+    }
+  ],
+  "family": "opsshield-dev",
+  "taskRoleArn": "arn:aws:iam::541592468666:role/opsshield-dev-ecs-task-role",
+  "executionRoleArn": "arn:aws:iam::541592468666:role/opsshield-dev-ecs-execution-role",
+  "networkMode": "awsvpc",
+  "volumes": [],
+  "placementConstraints": [],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024"
+}

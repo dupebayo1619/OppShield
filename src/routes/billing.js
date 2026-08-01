@@ -1,19 +1,17 @@
-const router = require('express').Router();
-const { body } = require('express-validator');
-const { authenticate, requireOrgMember, requireAdmin } = require('../middleware/auth');
-const { validate } = require('../middleware/validate');
+// src/routes/billing.js
+const express = require('express');
+const router = express.Router();
+const { authenticate } = require('../middleware/auth');
+const { getOrganisation } = require('../middleware/organisation');
 const billingController = require('../controllers/billing');
 
-router.get('/org/:orgId',
-  authenticate, requireOrgMember,
-  billingController.history
-);
+router.use(authenticate);
+router.use(getOrganisation);
 
-router.post('/org/:orgId/initiate',
-  authenticate, requireOrgMember, requireAdmin,
-  [body('plan').isIn(['STARTER', 'PRO'])],
-  validate,
-  billingController.initiate
-);
+// GET billing/payment history for the org
+router.get('/', billingController.history);
+
+// POST start a Paystack checkout for a plan
+router.post('/checkout', billingController.initiate);
 
 module.exports = router;
